@@ -9,7 +9,7 @@ use strict;
 use open ':utf8';
 use Getopt::Std;
 use Text::Wrap;
-our $VERSION = '0.3a';
+our $VERSION = '0.4';
 
 my $help = <<HELP;
 WordPress Manager Script, version $VERSION
@@ -53,7 +53,7 @@ my %subcommands = (
 		description => "Start a new WordPress install using configuration file."
 	},
 	dumpdata  => {
-		description => "Dump the database from the specified environment creating versions for each of the other environments in the config.db_dump_dir. Note that the password is supplied to mysqldump as an argument which is sent over the wire as cleartext.",
+		description => "Dump the database from the specified environment into a file {environment}.sql in the config db_dump_dir. Note that the password is supplied to mysqldump as an argument which is sent over the wire as cleartext.",
 		arguments   => [
 			{
 				name => 'environment',
@@ -62,11 +62,15 @@ my %subcommands = (
 		]
 	},
 	pushdata  => {
-		description => "Take the latest dump produced from the dumpdata subcommand and pushes it to the supplied or default environment. Note that the password is supplied to the mysql client as an argument which is sent over the wire as cleartext.",
+		description => "Take the latest dump produced from the dumpdata subcommand and push it to the supplied environment after converting the HTTP host name from the source dump to match the destination environment HTTP host name. If the source_env is not provided, the default_environment is assumed. Note that the password is supplied to the mysql client as an argument which is sent over the wire as cleartext.",
 		arguments   => [
 			{
-				name => 'environment',
+				name => 'source_env',
 				optional => 1
+			},
+			{
+				name => 'dest_env',
+				#optional => 1
 			}
 		]
 	},
@@ -484,7 +488,7 @@ if($subcommand eq 'dumpdata' || $subcommand eq 'datadump'){
 	my @destinations = grep !/^$environment$/i, @environments;
 	
 	#Dump the source database
-	print " - Getting dump from $environment...";
+	my $db_dump_dir = ($config->{'db_dump_dir'} || 'db');
 	system('mysqldump ' .
 			join(' ', (
 				$mysql_verbose_switch,
@@ -495,59 +499,8 @@ if($subcommand eq 'dumpdata' || $subcommand eq 'datadump'){
 				'--skip-comments',
 				'--no-create-db',
 				'--databases "' . $c->{db_name} . '"'
-			)) . ' > ~temp.sql');
-	print "done.\n";
+			)) . " > $db_dump_dir/$environment.sql");
 	
-	my $db_dump_dir = ($config->{'db_dump_dir'} || 'db');
-	
-	open SRC_IN, "~temp.sql";
-	open SRC_OUT, ">$db_dump_dir/$environment.sql";
-	
-	#Open write-filehandles for the destinations
-	my %dest_fh = ();
-	foreach my $dest (@destinations){
-		open $dest_fh{$dest}, ">$db_dump_dir/$dest.sql";
-	}
-	
-	while(<SRC_IN>){
-		#s{^-- Dump completed on .+}{};
-		#s{^-- Server version.+}{};
-		#s{^-- Host:.+}{};
-		
-		#Problem with WP2.5
-		#s{^INSERT INTO `wp_options`.+?,dashboard_widget_options'.+}{}s;
-		
-		print SRC_OUT;
-	
-		my $original = $_;
-		foreach my $dest (@destinations){
-			s{(?<=://)\Q$config->{environments}->{$environment}->{http_host}\E(?!\.)}
-			 {$config->{environments}->{$dest}->{http_host}}g;
-			 
-			#s{USE `\Q$config->{environments}->{$environment}->{db_name}\E`;}
-			# {USE `$config->{environments}->{$dest}->{db_name}`;}g;
-			 
-			#s{(CREATE DATABASE.+?)`\Q$sources{$source}->{db_name}\E`}
-			 #{$1`$sources{$dest}->{db_name}`};
-			
-			select $dest_fh{$dest};
-			print;
-			
-			$_ = $original;
-		}
-	}
-	select STDOUT;
-	
-	close SRC_IN;
-	close SRC_OUT;
-	print " - Finished $environment\n";
-	
-	foreach my $dest (keys %dest_fh){
-		print " - Finished $dest\n";
-		close $dest_fh{$dest};
-	}
-	
-	unlink('~temp.sql');
 	exit;
 }
 
@@ -556,18 +509,55 @@ if($subcommand eq 'pushdata' || $subcommand eq 'datapush'){
 	
 	my $db_dump_dir = ($config->{'db_dump_dir'} || 'db');
 	
-	my $isForce = exists $args{f};
-	
 	#Get the destination environment
-	my $environment = shift @ARGV || $config->{default_environment};
-	die "Unrecognized environment '$environment'\n" if not exists $config->{'environments'}->{$environment};
-	my $c = $config->{'environments'}->{$environment};
+	my($source_env, $dest_env);
+	if(@ARGV == 1){
+		$source_env = $config->{default_environment};
+		$dest_env = shift @ARGV;
+	}
+	elsif(@ARGV > 1) {
+		$source_env = shift @ARGV;
+		$dest_env = shift @ARGV;
+	}
 	
-	die "Error: In order to push to production, you must supply the -f parameter\n" if($c->{force_required} && !$isForce);
-	die "Error: $db_dump_dir/$environment.sql does not exist. Please run dumpdata\n" if(not -f "$db_dump_dir/$environment.sql");
+	die "Source environment (source_env) not provided\n" if !$source_env;
+	die "Unrecognized environment '$source_env'\n" if not exists $config->{'environments'}->{$source_env};
+	die "Destination environment (dest_env) not provided\n" if !$dest_env;
+	die "Unrecognized environment '$dest_env'\n" if not exists $config->{'environments'}->{$dest_env};
 	
-	my $db_host = $c->{db_host} || $c->{http_host};
-	system("mysql $mysql_verbose_switch -h $db_host -u $c->{db_user} --password=\"$c->{db_password}\" < $db_dump_dir/$environment.sql");
+	my $isForce = exists $args{f};
+	my $cSource = $config->{'environments'}->{$source_env};
+	my $cDest = $config->{'environments'}->{$dest_env};
+	
+	die "Error: In order to push to $dest_env, you must supply the -f parameter\n" if $cDest->{force_required} && !$isForce;
+	die "Error: $db_dump_dir/$source_env.sql does not exist. Please run dumpdata $source_env\n" if not -f "$db_dump_dir/$source_env.sql";
+	
+	# Now convert $db_dump_dir/$source_env.sql to $db_dump_dir/~$dest_env.sql
+	open SOURCE, "$db_dump_dir/$source_env.sql";
+	open DEST, ">$db_dump_dir/~$dest_env.sql";
+	my $httpHostLengthDiff = length($cDest->{http_host}) - length($cSource->{http_host});
+	while(<SOURCE>){
+		#Replace HTTP hosts
+		s{(?<=://)\Q$cSource->{http_host}\E(?!\.)}
+		 {$cDest->{http_host}}g;
+		
+		#Fix serialized PHP, e.g.:
+		# s:24:\"http://example.com-local
+		# s:51:\"link:http://example.com-local/ - Google Blog Search
+		s{(?<=s:)(\d+)(?=:\\"[^"]*\w+://\Q$cDest->{http_host}\E)}
+		 {$1 + $httpHostLengthDiff;}ge;
+		
+		print DEST;
+	}
+	
+	close SOURCE;
+	close DEST;
+	
+	my $db_host = $cDest->{db_host} || $cDest->{http_host};
+	system("mysql $mysql_verbose_switch -h $db_host -u $cDest->{db_user} --password=\"$cDest->{db_password}\" < $db_dump_dir/~$dest_env.sql");
+	
+	#Clean up
+	#unlink("$db_dump_dir/~$dest_env.sql");
 	exit;
 }
 
