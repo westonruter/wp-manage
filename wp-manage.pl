@@ -55,8 +55,8 @@ my %subcommands = (
 	dumpdata  => {
 		description => "Dump the database from the specified environment into a
 		                file {environment}.sql in the config db_dump_dir. Note
-						that the password is supplied to mysqldump as an
-						argument which is sent over the wire as cleartext.",
+		                that the password is supplied to mysqldump as an
+		                argument which is sent over the wire as cleartext.",
 		arguments   => [
 			{
 				name => 'environment',
@@ -67,12 +67,12 @@ my %subcommands = (
 	pushdata  => {
 		description => "Take the latest dump produced from the dumpdata
 		                subcommand and push it to the supplied environment
-						after converting the HTTP host name from the source
-						dump to match the destination environment HTTP host
-						name. If the source_env is not provided, the
-						default_environment is assumed. Note that the password
-						is supplied to the mysql client as an argument which
-						is sent over the wire as cleartext.",
+		                after converting the HTTP host name from the source
+		                dump to match the destination environment HTTP host
+		                name. If the source_env is not provided, the
+		                default_environment is assumed. Note that the password
+		                is supplied to the mysql client as an argument which
+		                is sent over the wire as cleartext.",
 		arguments   => [
 			{
 				name => 'source_env',
@@ -90,7 +90,7 @@ my %subcommands = (
 	update    => {
 		description => "Updates the svn:externals definitions for the WP
 		                version and plugins defined in config file and then
-						does svn up."
+		                does svn up."
 	},
 );
 
