@@ -9,8 +9,7 @@ use strict;
 use open ':utf8';
 use Getopt::Std;
 use Text::Wrap;
-our $VERSION = '0.3dev';
-my $isDebug = 1;
+our $VERSION = '0.3a';
 
 my $help = <<HELP;
 WordPress Manager Script, version $VERSION
@@ -205,15 +204,15 @@ sub in_array #http://www.go4expert.com/forums/showthread.php?t=8978
 if($subcommand eq 'setup' || $subcommand eq 'install' || $subcommand eq 'init'){
 	
 	# Create directories and add them to repo
-	temp_system("svn $svn_verbose_switch mkdir " . ($config->{'db_dump_dir'} || 'db'));
+	system("svn $svn_verbose_switch mkdir " . ($config->{'db_dump_dir'} || 'db'));
 	my $public_dir = ($config->{'public_dir'} || 'public');
-	temp_system("svn $svn_verbose_switch mkdir $public_dir");
-	temp_system("svn $svn_verbose_switch mkdir $public_dir/wp-content");
-	temp_system("svn $svn_verbose_switch mkdir $public_dir/wp-content/uploads");
+	system("svn $svn_verbose_switch mkdir $public_dir");
+	system("svn $svn_verbose_switch mkdir $public_dir/wp-content");
+	system("svn $svn_verbose_switch mkdir $public_dir/wp-content/uploads");
 	chmod(0777,      "$public_dir/wp-content/uploads");
-	temp_system("svn $svn_verbose_switch mkdir $public_dir/wp-content/cache");
+	system("svn $svn_verbose_switch mkdir $public_dir/wp-content/cache");
 	chmod(0777,      "$public_dir/wp-content/cache");
-	temp_system("svn $svn_verbose_switch mkdir $public_dir/wp-content/plugins");
+	system("svn $svn_verbose_switch mkdir $public_dir/wp-content/plugins");
 	chmod(0777,      "$public_dir/wp-content/plugins");
 	
 	my($wp_repo_url, $wp_repo_rev) = split(/\?r=/, $config->{wp_repo});
@@ -225,7 +224,7 @@ if($subcommand eq 'setup' || $subcommand eq 'install' || $subcommand eq 'init'){
 	}
 	
 	# Grab the 
-	temp_system("svn export $svn_verbose_switch --force --non-recursive $wp_repo_rev_arg $wp_repo_url $public_dir");
+	system("svn export $svn_verbose_switch --force --non-recursive $wp_repo_rev_arg $wp_repo_url $public_dir");
 	
 	# Ignore files
 	my @ignore = ();
@@ -235,17 +234,17 @@ if($subcommand eq 'setup' || $subcommand eq 'install' || $subcommand eq 'init'){
 	open EXT, ">~temp.txt";
 	print EXT join("\n", @ignore);
 	close EXT;
-	temp_system("svn propset svn:ignore -F ~temp.txt $public_dir");
+	system("svn propset svn:ignore -F ~temp.txt $public_dir");
 	
 	# Add files
 	chdir($public_dir);
 	foreach(<*>){
 		if(-f && !in_array($_, @ignore)){
-			temp_system("svn add $_");
+			system("svn add $_");
 		}
 	}
 	chdir('..');
-	#temp_system("svn add $public_dir");
+	#system("svn add $public_dir");
 	
 	# Load the admin and includes directories
 	use File::Path;
@@ -258,7 +257,7 @@ if($subcommand eq 'setup' || $subcommand eq 'install' || $subcommand eq 'init'){
 	open EXT, ">~temp.txt";
 	print EXT join("\n", @externals);
 	close EXT;
-	temp_system("svn propset svn:externals -F ~temp.txt $public_dir");
+	system("svn propset svn:externals -F ~temp.txt $public_dir");
 	
 	# Add plugins
 	@externals = ();
@@ -276,7 +275,7 @@ if($subcommand eq 'setup' || $subcommand eq 'install' || $subcommand eq 'init'){
 	}
 	print EXT join("\n", @externals);
 	close EXT;
-	temp_system("svn propset svn:externals -F ~temp.txt $public_dir/wp-content/plugins");
+	system("svn propset svn:externals -F ~temp.txt $public_dir/wp-content/plugins");
 	
 	
 	# Setup the wp-config.php file
@@ -373,7 +372,7 @@ require_once(ABSPATH . 'wp-settings.php');
 WPCONFIGFILE
 	close WPCONFIG;
 	
-	temp_system("svn add $public_dir/wp-config.php");
+	system("svn add $public_dir/wp-config.php");
 	
 	# Create databases development only (staging and production must be setup manually)
 	if(exists $config->{environments}->{$config->{default_environment}}){
@@ -383,31 +382,31 @@ WPCONFIGFILE
 		print SQL " DEFAULT CHARACTER SET $config->{db_charset}" if $config->{db_charset};
 		print SQL ";";
 		close SQL;
-		temp_system("mysql $mysql_verbose_switch -u $c->{db_user} --password=$c->{db_password} < ~temp.txt");
+		system("mysql $mysql_verbose_switch -u $c->{db_user} --password=$c->{db_password} < ~temp.txt");
 	}
 	
 	#foreach my $env (keys %{$config->{'environments'}}){
 	#	my $c = $config->{'environments'}->{$env};
 	#	#if($c->{db_user})
 	#	
-	#	temp_system("mysql $mysql_verbose_switch -u $c->{db_user} --password=$c->{db_password}");
+	#	system("mysql $mysql_verbose_switch -u $c->{db_user} --password=$c->{db_password}");
 	#}
 	
 	# Add a theme
-	temp_system("svn mkdir $svn_verbose_switch $public_dir/wp-content/themes");
-	temp_system("svn mkdir $svn_verbose_switch $public_dir/wp-content/themes/" . $config->{theme_slug});
+	system("svn mkdir $svn_verbose_switch $public_dir/wp-content/themes");
+	system("svn mkdir $svn_verbose_switch $public_dir/wp-content/themes/" . $config->{theme_slug});
 	open CSS, ">$public_dir/wp-content/themes/" . $config->{theme_slug} . "/style.css";
 	print CSS "/*
 Theme Name: $config->{site_name}
 Author: $config->{theme_author}
 */";
 	close CSS;
-	temp_system("svn add $public_dir/wp-content/themes/" . $config->{theme_slug} . "/style.css");
+	system("svn add $public_dir/wp-content/themes/" . $config->{theme_slug} . "/style.css");
 	open PHP, ">$public_dir/wp-content/themes/" . $config->{theme_slug} . "/index.php";
 	print PHP "Theme is empty";
 	close PHP;
-	temp_system("svn add $public_dir/wp-content/themes/" . $config->{theme_slug} . "/index.php");
-	temp_system("svn up $svn_verbose_switch");
+	system("svn add $public_dir/wp-content/themes/" . $config->{theme_slug} . "/index.php");
+	system("svn up $svn_verbose_switch");
 	
 	#Week Starts On: Sunday
 	# 
@@ -434,7 +433,7 @@ if($subcommand eq 'update'){
 	if($wp_repo_rev ne 'HEAD'){
 		$wp_repo_rev_arg = "-r $wp_repo_rev";
 	}
-	temp_system("svn export $svn_verbose_switch --force --non-recursive $wp_repo_rev_arg $wp_repo_url $public_dir");
+	system("svn export $svn_verbose_switch --force --non-recursive $wp_repo_rev_arg $wp_repo_url $public_dir");
 	
 	my $externals = `svn propget svn:externals $public_dir`;
 	$externals =~ s{(-r\d+\s*)?http://(core\.svn\.wordpress\.org/tags|svn\.automattic\.com/wordpress/tags)/(\d+(\.\d+)*)/}
@@ -443,7 +442,7 @@ if($subcommand eq 'update'){
 	open TEMP, ">~propset.txt";
 	print TEMP $externals;
 	close TEMP;
-	temp_system("svn propset svn:externals -F ~propset.txt $public_dir ");
+	system("svn propset svn:externals -F ~propset.txt $public_dir ");
 	unlink('~propset.txt');
 	
 	
@@ -463,8 +462,8 @@ if($subcommand eq 'update'){
 	}
 	print EXT join("\n", @externals);
 	close EXT;
-	temp_system("svn propset svn:externals -F ~temp.txt $public_dir/wp-content/plugins");
-	temp_system("svn up $svn_verbose_switch");
+	system("svn propset svn:externals -F ~temp.txt $public_dir/wp-content/plugins");
+	system("svn up $svn_verbose_switch");
 	
 	#print "Now do svn up and svn commit to have your changes enacted.\n";
 	unlink('~temp.txt');
@@ -486,7 +485,7 @@ if($subcommand eq 'dumpdata' || $subcommand eq 'datadump'){
 	
 	#Dump the source database
 	print " - Getting dump from $environment...";
-	temp_system('mysqldump ' .
+	system('mysqldump ' .
 			join(' ', (
 				$mysql_verbose_switch,
 				'--host "' . ($c->{db_host} || $c->{http_host}) . '"',
@@ -568,13 +567,8 @@ if($subcommand eq 'pushdata' || $subcommand eq 'datapush'){
 	die "Error: $db_dump_dir/$environment.sql does not exist. Please run dumpdata\n" if(not -f "$db_dump_dir/$environment.sql");
 	
 	my $db_host = $c->{db_host} || $c->{http_host};
-	temp_system("mysql $mysql_verbose_switch -h $db_host -u $c->{db_user} --password=\"$c->{db_password}\" < $db_dump_dir/$environment.sql");
+	system("mysql $mysql_verbose_switch -h $db_host -u $c->{db_user} --password=\"$c->{db_password}\" < $db_dump_dir/$environment.sql");
 	exit;
 }
 
 
-
-sub temp_system {
-	my $cmd = shift;
-	print $cmd . "\n";
-}
