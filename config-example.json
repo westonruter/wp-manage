@@ -1,0 +1,58 @@
+{
+	"site_name":"Example Site",
+	"theme_author": "<a href='http://www.shepherdinteractive.com/'>Shepherd Interactive</a>",
+	"theme_slug": "example",
+	"admin_email":"weston@shepherd-interactive.com",
+	
+	"wp_repo": "http://core.svn.wordpress.org/tags/2.8.6/",
+	"plugin_repos":{
+		"override-post-title-with-first-content-heading":
+			"http://plugins.svn.wordpress.org/override-post-title-with-first-content-heading/trunk?r=164072",
+		"forms":
+			"http://plugins.svn.wordpress.org/forms/trunk/?r=174755",
+		"akismet":
+			"http://plugins.svn.wordpress.org/akismet/tags/2.2.6/",
+		"xhtml5-support":
+			"http://plugins.svn.wordpress.org/xhtml5-support/trunk/?r=160750",
+		"google-sitemap-generator":
+			"http://plugins.svn.wordpress.org/google-sitemap-generator/tags/3.1.6/",
+		"page-excerpt":
+			"http://plugins.svn.wordpress.org/page-excerpt/tags/1.0/?r=163502"
+	},
+	
+	"environments": {
+		"development": {
+			"http_host": "example.com-local",
+			"db_host": "localhost",
+			"db_user": "root",
+			"db_password": "",
+			"db_name": "example",
+			"debug": true
+		},
+		"staging": {
+			"http_host": "staging.example.com",
+			"db_host": "localhost",
+			"db_user": "example",
+			"db_password": "DMSHgY21MgD4fnp",
+			"db_name": "example",
+			"debug": true
+		},
+		"production": {
+			"http_host": "example.com",
+			"db_host": "localhost",
+			"db_user": "example",
+			"db_password": "bv6YYrFxfz2bmEJ",
+			"db_name": "example",
+			"debug": true,
+			"force_required":true
+		}
+	},
+	"default_environment":"development",
+	"db_dump_dir": "db",
+	"db_tables":[],
+	"db_charset":"utf8",
+	"db_table_prefix":"wp_",
+	
+	"lang":"en-US",
+	"public_dir": "public"
+}
