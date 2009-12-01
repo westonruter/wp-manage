@@ -8,10 +8,45 @@ use warnings;
 use strict;
 use open ':utf8';
 use Getopt::Std;
-
-
+use Text::Wrap;
 our $VERSION = '0.3dev';
 my $isDebug = 1;
+
+my $help = <<HELP;
+WordPress Manager Script, version $VERSION
+  by Weston Ruter <weston\@shepherd-interactive.com>
+Usage: perl wp-manage.pl <subcommand> [options] [args]
+  Sets up WordPress installations with svn:externals, keeps version and plugins
+  up to date with contents of config.json, facilitates database dumps and
+  migrations between environments (due to the fact that URLs are hard-coded
+  into in the database as as permalinks).
+
+Examples:
+  perl wp-manage.pl init
+  perl wp-manage.pl init -c ../config.json
+  perl wp-manage.pl update
+  perl wp-manage.pl dumpdata development
+  perl wp-manage.pl pushdata staging
+  perl wp-manage.pl pushdata -f production
+
+Suggestion: Checkout wp-manage.pl to a svn:externals directory and then in the
+directory above store config.js and various shell scripts to invoke various
+commands. A typical project root should look like this:
+  /wp-manage/wp-manage.pl
+  /config.json
+  /dumpdev-pushstaging.sh
+  /db/development.sql
+  /db/staging.sql
+  /db/production.sql
+  /public/index.php
+  /public/wp-config.php
+  ...
+  /public/wp-content/...
+Where dumpdev-pushstaging.sh would contain:
+  perl wp-manage/wp-manage.pl dumpdata development
+  perl wp-manage/wp-manage.pl pushdata staging
+
+HELP
 
 # All of the possible subcommands
 my %subcommands = (
@@ -19,7 +54,7 @@ my %subcommands = (
 		description => "Start a new WordPress install using configuration file."
 	},
 	dumpdata  => {
-		description => "Dump the database from the specified environment creating versions for each of the other environments.",
+		description => "Dump the database from the specified environment creating versions for each of the other environments in the config.db_dump_dir. Note that the password is supplied to mysqldump as an argument which is sent over the wire as cleartext.",
 		arguments   => [
 			{
 				name => 'environment',
@@ -28,7 +63,7 @@ my %subcommands = (
 		]
 	},
 	pushdata  => {
-		description => "Take the latest dump and push it to the supplied or default environment.",
+		description => "Take the latest dump produced from the dumpdata subcommand and pushes it to the supplied or default environment. Note that the password is supplied to the mysql client as an argument which is sent over the wire as cleartext.",
 		arguments   => [
 			{
 				name => 'environment',
@@ -37,22 +72,18 @@ my %subcommands = (
 		]
 	},
 	help      => {
-		description => "Displays this screen."
+		description => "Display this screen."
 	},
 	update    => {
-		description => "Updates the WP version and plugins defined in config file and then does svn up."
+		description => "Updates the svn:externals definitions for the WP version and plugins defined in config file and then does svn up."
 	},
 );
-
-# Get the invoked subcommand
-my $subcommand = lc shift @ARGV;
-die "First argument must be valid subcommand; run wp-manage.pl help" if($subcommand && not exists $subcommands{$subcommand});
-$subcommand ||= 'help';
 
 # All of the valid options
 my %options = (
 	'c' => {
-		default     => './config.json',
+		value       => "configfile",
+		default     => "./config.json",
 		description => "The configuration file (defaults to ./config.json)"
 	},
 	'v' => {
@@ -63,6 +94,11 @@ my %options = (
 		subcommands => [qw( pushdata )]
 	}
 );
+
+# Get the invoked subcommand
+my $subcommand = lc shift @ARGV;
+die "First argument must be valid subcommand; run wp-manage.pl help" if($subcommand && not exists $subcommands{$subcommand});
+$subcommand ||= 'help';
 
 # Get the allowed option arguments for this subcommand
 my $optstring = '';
@@ -93,41 +129,44 @@ foreach my $switch (keys %args){
 
 # If no subcommand given, display help
 if($subcommand eq 'help'){
-	print "\n";
-	print " \n\n";
-	print "\n";
-
-	print <<HELP;
-WordPress Manager Script, version $VERSION
-  by Weston Ruter <weston\@shepherd-interactive.com>
-Usage: perl wp-manage.pl <subcommand> [options] [args]
-  perl wp-manage.pl init
-  perl wp-manage.pl init -c ./config.json
-  perl wp-manage.pl update
-  perl wp-manage.pl dumpdata development
-  perl wp-manage.pl pushdata staging
-  perl wp-manage.pl pushdata -f production
-
-Suggestion: checkout wp-manage.pl to a svn:externals directory and then in the
-directory above store config.js and various shell scripts to invoke various
-commands. A typical project root should look like this:
-  /wp-manage/wp-manage.pl
-  /config.js
-  /dumpdev-pushstaging.sh
-  /db/development.sql
-  /db/staging.sql
-  /db/production.sql
-  /public/index.php
-  /public/wp-config.php
-  ...
-  /public/wp-content/...
-
-HELP
-
-	
+	print $help;
 	print "Available subcommands:\n";
-	foreach my $key (sort keys(%subcommands)){
-		printf("   % -10s%s\n", $key, $subcommands{$key}->{description});
+	foreach my $subcommand (sort keys(%subcommands)){
+		printf("  % -10s", $subcommand);
+		my @switches;
+		foreach my $switch (sort keys %options){
+			next if exists $options{$switch}->{subcommands} && !grep /$subcommand/, @{$options{$switch}->{subcommands}};
+			push @switches, "-$switch";
+			push @switches, $options{$switch}->{value} if exists $options{$switch}->{value};
+		}
+		if($subcommand ne 'help'){
+			print "[";
+			print join " ", @switches;
+			print "]  ";
+		}
+		if(exists $subcommands{$subcommand}->{arguments}){
+			foreach my $argument (@{$subcommands{$subcommand}->{arguments}}){
+				print(($argument->{optional} ? '[' . $argument->{name} . ']' : $argument->{name}) . " ");
+			}
+		}
+		print "\n";
+		print wrap("    ", "    ", $subcommands{$subcommand}->{description});
+		print "\n\n";
+	}
+	
+	print "All options:\n";
+	foreach my $switch (sort keys(%options)){
+		print "   -$switch";
+		if(exists $options{$switch}->{value}){
+			print " " . $options{$switch}->{value};
+			if(exists $options{$switch}->{default}){
+				print " (default: " . $options{$switch}->{default} . ")";
+			}
+		}
+		print "\n";
+		print wrap("     ", "     ", $options{$switch}->{description});
+		print "\n";
+		
 	}
 	exit;
 }
