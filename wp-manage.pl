@@ -53,7 +53,10 @@ my %subcommands = (
 		description => "Start a new WordPress install using configuration file."
 	},
 	dumpdata  => {
-		description => "Dump the database from the specified environment into a file {environment}.sql in the config db_dump_dir. Note that the password is supplied to mysqldump as an argument which is sent over the wire as cleartext.",
+		description => "Dump the database from the specified environment into a
+		                file {environment}.sql in the config db_dump_dir. Note
+						that the password is supplied to mysqldump as an
+						argument which is sent over the wire as cleartext.",
 		arguments   => [
 			{
 				name => 'environment',
@@ -62,7 +65,14 @@ my %subcommands = (
 		]
 	},
 	pushdata  => {
-		description => "Take the latest dump produced from the dumpdata subcommand and push it to the supplied environment after converting the HTTP host name from the source dump to match the destination environment HTTP host name. If the source_env is not provided, the default_environment is assumed. Note that the password is supplied to the mysql client as an argument which is sent over the wire as cleartext.",
+		description => "Take the latest dump produced from the dumpdata
+		                subcommand and push it to the supplied environment
+						after converting the HTTP host name from the source
+						dump to match the destination environment HTTP host
+						name. If the source_env is not provided, the
+						default_environment is assumed. Note that the password
+						is supplied to the mysql client as an argument which
+						is sent over the wire as cleartext.",
 		arguments   => [
 			{
 				name => 'source_env',
@@ -78,7 +88,9 @@ my %subcommands = (
 		description => "Display this screen."
 	},
 	update    => {
-		description => "Updates the svn:externals definitions for the WP version and plugins defined in config file and then does svn up."
+		description => "Updates the svn:externals definitions for the WP
+		                version and plugins defined in config file and then
+						does svn up."
 	},
 );
 
@@ -100,7 +112,7 @@ my %options = (
 
 # Get the invoked subcommand
 my $subcommand = lc shift @ARGV;
-die "First argument must be valid subcommand; run wp-manage.pl help\n" if($subcommand && not exists $subcommands{$subcommand});
+die "First argument must be valid subcommand; run wp-manage.pl help\n" if $subcommand && not exists $subcommands{$subcommand};
 $subcommand ||= 'help';
 
 # Get the allowed option arguments for this subcommand
@@ -135,7 +147,7 @@ if($subcommand eq 'help'){
 	print $help;
 	print "Available subcommands:\n";
 	foreach my $subcommand (sort keys(%subcommands)){
-		printf("  % -10s", $subcommand);
+		print "  $subcommand";
 		my @switches;
 		foreach my $switch (sort keys %options){
 			next if exists $options{$switch}->{subcommands} && !grep /$subcommand/, @{$options{$switch}->{subcommands}};
@@ -153,7 +165,9 @@ if($subcommand eq 'help'){
 			}
 		}
 		print "\n";
-		print wrap("    ", "    ", $subcommands{$subcommand}->{description});
+		my $desc = $subcommands{$subcommand}->{description};
+		$desc =~ s{\n\s+}{ }g;
+		print wrap("    ", "    ", $desc);
 		print "\n\n";
 	}
 	
