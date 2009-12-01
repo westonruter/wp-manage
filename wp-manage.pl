@@ -97,7 +97,7 @@ my %options = (
 
 # Get the invoked subcommand
 my $subcommand = lc shift @ARGV;
-die "First argument must be valid subcommand; run wp-manage.pl help" if($subcommand && not exists $subcommands{$subcommand});
+die "First argument must be valid subcommand; run wp-manage.pl help\n" if($subcommand && not exists $subcommands{$subcommand});
 $subcommand ||= 'help';
 
 # Get the allowed option arguments for this subcommand
@@ -122,7 +122,7 @@ foreach my $switch (keys %options){
 # Detect illegal arguments
 foreach my $switch (keys %args){
 	if((exists $options{$switch}->{subcommands}) && !grep /$subcommand/, @{$options{$switch}->{subcommands}}){
-		die "Illegal option '$switch' for subcommand '$subcommand'";
+		die "Illegal option '$switch' for subcommand '$subcommand'\n";
 	}
 }
 
@@ -175,8 +175,8 @@ if($subcommand eq 'help'){
 # Load configuration file
 my $configFile = $args{'c'}; #"./config.json"
 use JSON;
--f $configFile or die "Config file does not exist $configFile";
-open CONFIG, $configFile or die "Unable to read from $configFile";
+-f $configFile or die "Config file does not exist $configFile\n";
+open CONFIG, $configFile or die "Unable to read from $configFile\n";
 my $config = decode_json(join '', <CONFIG>);
 close CONFIG;
 
@@ -379,7 +379,7 @@ WPCONFIGFILE
 	if(exists $config->{environments}->{$config->{default_environment}}){
 		$c = $config->{environments}->{$config->{default_environment}};
 		open SQL, ">~temp.txt";
-		print SQL "CREATE DATABASE `$c->{db_name}`";
+		print SQL "CREATE DATABASE `$c->{db_name}`"; #IF NOT EXISTS
 		print SQL " DEFAULT CHARACTER SET $config->{db_charset}" if $config->{db_charset};
 		print SQL ";";
 		close SQL;
