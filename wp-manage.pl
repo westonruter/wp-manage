@@ -455,7 +455,7 @@ Author: $config->{theme_author}
 
 
 # Updates the WP version to the version located at config.wp_repo and does svn up
-if($subcommand eq 'update'){
+if($subcommand eq 'update' || $subcommand eq 'up'){
 	my $public_dir = ($config->{'public_dir'} || 'public');
 	
 	# Update the WP Install
