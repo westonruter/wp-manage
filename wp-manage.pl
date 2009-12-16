@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 # WordPress Manager Script
 # by Weston Ruter <weston@shepherd-interactive.com>
-# Copyright 2009, Shepherd Interaction <http://shepherdinteractive.com/>
+# Copyright 2009, Shepherd Interactive <http://shepherdinteractive.com/>
 # $Id$
 # 
 # License: GPL 3.0 <http://www.gnu.org/licenses/gpl.html>
