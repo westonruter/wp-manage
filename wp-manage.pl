@@ -24,7 +24,7 @@ use strict;
 use open ':utf8';
 use Getopt::Std;
 use Text::Wrap;
-our $VERSION = '0.4.1';
+our $VERSION = '0.4.2';
 
 my $help = <<HELP;
 WordPress Manager Script, version $VERSION
@@ -253,7 +253,7 @@ if($subcommand eq 'setup' || $subcommand eq 'install' || $subcommand eq 'init'){
 	$wp_repo_url .= '/' if $wp_repo_url !~ m{/$}; #trailingslashit
 	my $wp_repo_rev_arg = '';
 	if($wp_repo_rev ne 'HEAD'){
-		$wp_repo_rev_arg = "-r $wp_repo_rev";
+		$wp_repo_rev_arg = "-r$wp_repo_rev";
 	}
 	
 	# Grab the 
@@ -464,14 +464,15 @@ if($subcommand eq 'update' || $subcommand eq 'up'){
 	$wp_repo_url .= '/' if $wp_repo_url !~ m{/$}; #trailingslashit
 	my $wp_repo_rev_arg = '';
 	if($wp_repo_rev ne 'HEAD'){
-		$wp_repo_rev_arg = "-r $wp_repo_rev";
+		$wp_repo_rev_arg = "-r$wp_repo_rev";
 	}
 	system("svn export $svn_verbose_switch --force --non-recursive $wp_repo_rev_arg $wp_repo_url $public_dir");
 	
 	my $externals = `svn propget svn:externals $public_dir`;
-	$externals =~ s{(-r\d+\s*)?http://(core\.svn\.wordpress\.org|svn\.automattic\.com)/.+?/(?=wp-admin|wp-includes)}
+	$externals =~ s{(-r\s*\d+\s*)?http://(core\.svn\.wordpress\.org|svn\.automattic\.com)/.+?/(?=wp-admin|wp-includes)}
 	                 {$wp_repo_rev_arg   $wp_repo_url}g;
 	$externals =~ s{\s+$}{\n}s; #remove trailing slashes
+	
 	open TEMP, ">~propset.txt";
 	print TEMP $externals;
 	close TEMP;
