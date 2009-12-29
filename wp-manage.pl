@@ -24,7 +24,7 @@ use strict;
 use open ':utf8';
 use Getopt::Std;
 use Text::Wrap;
-our $VERSION = '0.4.2';
+our $VERSION = '0.4.3';
 
 my $help = <<HELP;
 WordPress Manager Script, version $VERSION
@@ -584,7 +584,7 @@ if($subcommand eq 'pushdata' || $subcommand eq 'datapush'){
 	close DEST;
 	
 	my $db_host = $cDest->{db_host} || $cDest->{http_host};
-	system("mysql $mysql_verbose_switch -h $db_host -u $cDest->{db_user} --password=\"$cDest->{db_password}\" < $db_dump_dir/~$dest_env.sql");
+	system("mysql $mysql_verbose_switch -h $db_host -u $cDest->{db_user} --password=\"$cDest->{db_password}\" $cDest->{db_name} < $db_dump_dir/~$dest_env.sql");
 	
 	#Clean up
 	#unlink("$db_dump_dir/~$dest_env.sql");
