@@ -24,7 +24,7 @@ use strict;
 use open ':utf8';
 use Getopt::Std;
 use Text::Wrap;
-our $VERSION = '0.4.3';
+our $VERSION = '0.4.4';
 
 my $help = <<HELP;
 WordPress Manager Script, version $VERSION
@@ -212,6 +212,13 @@ open CONFIG, $configFile or die "Unable to read from $configFile\n";
 my $config = decode_json(join '', <CONFIG>);
 close CONFIG;
 
+# Add config aliases
+foreach my $env (values %{$config->{'environments'}}){
+	$env->{'server_name'} = $env->{'http_host'} if (not exists $env->{'server_name'}) && exists $env->{'http_host'};
+	$env->{'db_password'} = $env->{'db_pass'}   if (not exists $env->{'db_password'}) && exists $env->{'db_pass'};
+}
+
+
 #use Data::Dumper;
 #print Dumper($config);
 #my $environment = shift @ARGV || $config->{default_environment};
@@ -324,7 +331,7 @@ if($subcommand eq 'setup' || $subcommand eq 'install' || $subcommand eq 'init'){
 		$c = $config->{'environments'}->{$env};
 		
 		$mySqlConstants .= $mySqlConstants ? "else if(" : "if(";
-		$mySqlConstants .= '$_SERVER["HTTP_HOST"] == "' . $c->{http_host} . '"';
+		$mySqlConstants .= '$_SERVER["HTTP_HOST"] == "' . $c->{server_name} . '"';
 		$mySqlConstants .= "){\n";
 		$mySqlConstants .= "\tdefine('DB_NAME', '" . $c->{'db_name'} . "');\n";
 		$mySqlConstants .= "\tdefine('DB_USER', '" . $c->{'db_user'} . "');\n";
@@ -522,10 +529,12 @@ if($subcommand eq 'dumpdata' || $subcommand eq 'datadump'){
 	system('mysqldump ' .
 			join(' ', (
 				$mysql_verbose_switch,
-				'--host "' . ($c->{db_host} || $c->{http_host}) . '"',
+				'--host "' . ($c->{db_host} || $c->{server_name}) . '"',
 				'--user "' . $c->{db_user} . '"',
 				'--password="' . $c->{db_password} . '"',
+				'--quick',
 				'--extended-insert=FALSE',
+				'--complete-insert',
 				'--skip-comments',
 				'--no-create-db',
 				'--databases "' . $c->{db_name} . '"'
@@ -565,16 +574,21 @@ if($subcommand eq 'pushdata' || $subcommand eq 'datapush'){
 	# Now convert $db_dump_dir/$source_env.sql to $db_dump_dir/~$dest_env.sql
 	open SOURCE, "$db_dump_dir/$source_env.sql";
 	open DEST, ">$db_dump_dir/~$dest_env.sql";
-	my $httpHostLengthDiff = length($cDest->{http_host}) - length($cSource->{http_host});
+	my $httpHostLengthDiff = length($cDest->{server_name}) - length($cSource->{server_name});
+	
+	my @httpHosts = $cSource->{server_name};
+	push @httpHosts, @{$cSource->{server_aliases}} if exists $cSource->{server_aliases};
+	my $httpHostsRegexp = join '|', map { quotemeta } @httpHosts;
+	
 	while(<SOURCE>){
 		#Replace HTTP hosts
-		s{(?<=://)\Q$cSource->{http_host}\E(?!\.)}
-		 {$cDest->{http_host}}g;
+		s{(?<=://)(?:$httpHostsRegexp)(?!\.)}  #s{(?<=://)\Q$cSource->{server_name}\E(?!\.)}
+		 {$cDest->{server_name}}g;
 		
 		#Fix serialized PHP, e.g.:
 		# s:24:\"http://example.com-local
 		# s:51:\"link:http://example.com-local/ - Google Blog Search
-		s{(?<=s:)(\d+)(?=:\\"[^"]*\w+://\Q$cDest->{http_host}\E)}
+		s{(?<=s:)(\d+)(?=:\\"[^"]*\w+://(?:$httpHostsRegexp))}
 		 {$1 + $httpHostLengthDiff;}ge;
 		
 		print DEST;
@@ -583,7 +597,7 @@ if($subcommand eq 'pushdata' || $subcommand eq 'datapush'){
 	close SOURCE;
 	close DEST;
 	
-	my $db_host = $cDest->{db_host} || $cDest->{http_host};
+	my $db_host = $cDest->{db_host} || $cDest->{server_name};
 	system("mysql $mysql_verbose_switch -h $db_host -u $cDest->{db_user} --password=\"$cDest->{db_password}\" $cDest->{db_name} < $db_dump_dir/~$dest_env.sql");
 	
 	#Clean up
