@@ -24,7 +24,7 @@ use strict;
 use open ':utf8';
 use Getopt::Std;
 use Text::Wrap;
-our $VERSION = '0.4.4';
+our $VERSION = '0.5a';
 
 my $help = <<HELP;
 WordPress Manager Script, version $VERSION
@@ -526,20 +526,23 @@ if($subcommand eq 'dumpdata' || $subcommand eq 'datadump'){
 	
 	#Dump the source database
 	my $db_dump_dir = ($config->{'db_dump_dir'} || 'db');
-	system('mysqldump ' .
-			join(' ', (
-				$mysql_verbose_switch,
-				'--host "' . ($c->{db_host} || $c->{server_name}) . '"',
-				'--user "' . $c->{db_user} . '"',
-				'--password="' . $c->{db_password} . '"',
-				'--quick',
-				'--extended-insert=FALSE',
-				'--complete-insert',
-				'--skip-comments',
-				'--no-create-db',
-				'--databases "' . $c->{db_name} . '"'
-			)) . " > $db_dump_dir/$environment.sql");
+	my @options = (
+		$mysql_verbose_switch,
+		'--host "' . ($c->{db_host} || $c->{server_name}) . '"',
+		'--user "' . $c->{db_user} . '"',
+		'--password="' . $c->{db_password} . '"',
+		'--quick',
+		'--extended-insert=FALSE',
+		'--complete-insert',
+		'--skip-comments',
+		'--no-create-db',
+		'"' . $c->{db_name} . '"'
+	);
 	
+	if(exists $config->{'db_tables'} && scalar @{$config->{'db_tables'}}){
+		push @options, '"' . join('" "', @{$config->{'db_tables'}}) . '"';
+	}
+	system('mysqldump ' . join(' ', @options) . " > $db_dump_dir/$environment.sql");
 	exit;
 }
 
