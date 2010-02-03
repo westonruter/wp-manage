@@ -24,7 +24,7 @@ use strict;
 use open ':utf8';
 use Getopt::Std;
 use Text::Wrap;
-our $VERSION = '0.5a';
+our $VERSION = '0.6a';
 
 my $help = <<HELP;
 WordPress Manager Script, version $VERSION
@@ -122,6 +122,11 @@ my %options = (
 	'f' => {
 		description => "Force the potentially destructive action to occur",
 		subcommands => [qw( pushdata )]
+	},
+	'p' => {
+		value       => "shellscript",
+		description => "Post-hook shell script for dumpdata, and pre-hook for pushdata; SQL dump file path is passed as argument",
+		subcommands => [qw( pushdata dumpdata )]
 	}
 );
 
@@ -134,7 +139,7 @@ $subcommand ||= 'help';
 my $optstring = '';
 foreach(keys %options){
 	$optstring .= $_;
-	$optstring .= ':' if exists $options{$_}->{default};
+	$optstring .= ':' if exists $options{$_}->{value};
 }
 
 # Get the arguments
@@ -543,6 +548,7 @@ if($subcommand eq 'dumpdata' || $subcommand eq 'datadump'){
 		push @options, '"' . join('" "', @{$config->{'db_tables'}}) . '"';
 	}
 	system('mysqldump ' . join(' ', @options) . " > $db_dump_dir/$environment.sql");
+	system("$args{p} $db_dump_dir/$environment.sql") if exists $args{p} && $args{p};
 	exit;
 }
 
@@ -601,6 +607,7 @@ if($subcommand eq 'pushdata' || $subcommand eq 'datapush'){
 	close DEST;
 	
 	my $db_host = $cDest->{db_host} || $cDest->{server_name};
+	system("$args{p} $db_dump_dir/~$dest_env.sql") if exists $args{p} && $args{p};
 	system("mysql $mysql_verbose_switch -h $db_host -u $cDest->{db_user} --password=\"$cDest->{db_password}\" $cDest->{db_name} < $db_dump_dir/~$dest_env.sql");
 	
 	#Clean up
