@@ -1,8 +1,7 @@
 #!/usr/bin/perl -w
 # WordPress Manager Script
 # by Weston Ruter <weston@shepherd-interactive.com>
-# Copyright 2009, Shepherd Interactive <http://shepherdinteractive.com/>
-# $Id$
+# Copyright 2010, Shepherd Interactive <http://shepherdinteractive.com/>
 # 
 # License: GPL 3.0 <http://www.gnu.org/licenses/gpl.html>
 # 
@@ -24,7 +23,7 @@ use strict;
 use open ':utf8';
 use Getopt::Std;
 use Text::Wrap;
-our $VERSION = '0.6a';
+our $VERSION = '0.6b';
 
 my $help = <<HELP;
 WordPress Manager Script, version $VERSION
@@ -590,7 +589,7 @@ if($subcommand eq 'pushdata' || $subcommand eq 'datapush'){
 	my $httpHostsRegexp = join '|', map { quotemeta } @httpHosts;
 	
 	while(<SOURCE>){
-		#Replace HTTP hosts
+		# Replace HTTP hosts
 		s{(?<=://)(?:$httpHostsRegexp)(?!\.)}  #s{(?<=://)\Q$cSource->{server_name}\E(?!\.)}
 		 {$cDest->{server_name}}g;
 		
@@ -599,6 +598,10 @@ if($subcommand eq 'pushdata' || $subcommand eq 'datapush'){
 		# s:51:\"link:http://example.com-local/ - Google Blog Search
 		s{(?<=s:)(\d+)(?=:\\"[^"]*\w+://(?:$httpHostsRegexp))}
 		 {$1 + $httpHostLengthDiff;}ge;
+		
+		# Replace remaining hostnames left over for WordPress MU
+		s{(?<=')(?:$httpHostsRegexp)(?=')}
+		 {$cDest->{server_name}}g;
 		
 		print DEST;
 	}
