@@ -23,7 +23,7 @@ use strict;
 use open ':utf8';
 use Getopt::Std;
 use Text::Wrap;
-our $VERSION = '0.6b';
+our $VERSION = '0.6.1';
 
 my $help = <<HELP;
 WordPress Manager Script, version $VERSION
@@ -324,7 +324,7 @@ if($subcommand eq 'setup' || $subcommand eq 'install' || $subcommand eq 'init'){
 	
 	# Setup the wp-config.php file
 	use LWP::Simple;
-	my $authenticationUniqueKeys = get("http://api.wordpress.org/secret-key/1.1/");
+	my $authenticationUniqueKeys = get("http://api.wordpress.org/secret-key/1.1/salt/");
 	my $charset = $config->{db_charset} || 'utf8';
 	my $table_prefix = exists $config->{db_table_prefix} ? $config->{db_table_prefix} : 'wp_';
 	
