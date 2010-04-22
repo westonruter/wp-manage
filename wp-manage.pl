@@ -23,7 +23,7 @@ use strict;
 use open ':utf8';
 use Getopt::Std;
 use Text::Wrap;
-our $VERSION = '0.6.1';
+our $VERSION = '0.6.2';
 
 my $help = <<HELP;
 WordPress Manager Script, version $VERSION
@@ -536,6 +536,7 @@ if($subcommand eq 'dumpdata' || $subcommand eq 'datadump'){
 		'--user "' . $c->{db_user} . '"',
 		'--password="' . $c->{db_password} . '"',
 		'--quick',
+		'--default-character-set=utf8',
 		'--extended-insert=FALSE',
 		'--complete-insert',
 		'--skip-comments',
