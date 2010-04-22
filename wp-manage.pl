@@ -601,9 +601,10 @@ if($subcommand eq 'pushdata' || $subcommand eq 'datapush'){
 		 {$1 + $httpHostLengthDiff;}ge;
 		
 		# Replace remaining hostnames left over for WordPress MU
-		s{(?<=')(?:$httpHostsRegexp)(?=')}
-		 {$cDest->{server_name}}g;
-		
+		if(!/'(template|stylesheet)'/){
+			s{(?<=')(?:$httpHostsRegexp)(?=')}
+			 {$cDest->{server_name}}g;
+		}
 		print DEST;
 	}
 	
